@@ -57,16 +57,15 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
 
 1. **Move objects to new partitions**  
     This is basically just a renaming on the same device, thus no heavy data movement is required in this step. Doing this in parallel on all storage nodes
-    will take only some minutes for the whole clusters and minimizes downtime. It works like this:
+    will take only some minutes for the whole cluster and minimizes downtime. It works like this:
 
-* Walk a given path and search for files with suffix `.data or .ts`.
+* Walk a given path and search for files with suffix `.data, .ts or .db`.
 * For each object file: get account, container and object name from XFS attributes.
+* For each account/container database file: get account and container database.
+
 * Compute partition value using given ring file.
 * Build new name by replacing old partition value with new computed value.
 * Print `mkdir` and `mv` commands.
-
-
-    Support for database files (account/container) currently in work.
 
         swift-ring-tool -o /etc/swift/object.ring.gz /srv/node/ > move.sh
 
