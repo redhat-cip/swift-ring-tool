@@ -148,16 +148,6 @@ def get_acc_cont_obj(filename):
     return (account, container, obj)
 
 
-def get_acc(dbfile):
-    """ Get account from account database file """
-    conn = sqlite3.connect(dbfile)
-    cursor = conn.cursor()
-    cursor.execute('SELECT account FROM account_stat')
-    account = cursor.fetchone()
-    conn.close()
-    return account
-
-
 def find_all_files(ringfile, path, options):
     """ Walks filesystem and prints move commands """
     path_elements = len(path.strip('/').split('/'))
