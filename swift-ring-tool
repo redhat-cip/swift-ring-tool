@@ -269,8 +269,8 @@ def main():
             print "-" * 25
             for part in range(src_ring['parts']):
                 devices = []
-                for replica in range(3):
-                    device = src_ring['_replica2part2dev'][replica][part]
+                for replica in src_ring['_replica2part2dev']:
+                    device = replica[part]
                     devices.append(str(device))
                 print "Partition %d:\t%s" % (part, ' '.join(devices))
 
