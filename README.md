@@ -52,7 +52,7 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
         Partition 6:    1 2 0
         Partition 7:    1 2 0
 
-1. ** Stop Swift cluster **
+1. **Stop Swift cluster**
 
 1. **Copy new ring to storage & proxy nodes**  
     Object access will fail until the next step is finished. The downtime depends on the amount of objects on each disk and disk speed.
@@ -83,7 +83,7 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
     might be a good idea to use a well-balanced, fresh distribution in the long term. Execute the following steps to migrate the current ring to a new one. This is
     optional and I'd like to get some community feedback if this is really required.
 
-1. ** Restart Swift cluster **
+1. **Restart Swift cluster**
 
 1. **Create a second ring without device mapping and rebalance this ring**  
     This is effectively a fresh ring with a well-distributed device distribution. The goal is to migrate the ring from the previous steps slowly to this ring.
