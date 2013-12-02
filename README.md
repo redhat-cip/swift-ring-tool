@@ -52,6 +52,8 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
         Partition 6:    1 2 0
         Partition 7:    1 2 0
 
+1. ** Stop Swift cluster **
+
 1. **Copy new ring to storage & proxy nodes**  
     Object access will fail until the next step is finished. The downtime depends on the amount of objects on each disk and disk speed.
 
@@ -59,13 +61,13 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
     This is basically just a renaming on the same device, thus no heavy data movement is required in this step. Doing this in parallel on all storage nodes
     will take only some minutes for the whole cluster and minimizes downtime. It works like this:
 
-* Walk a given path and search for files with suffix `.data, .ts or .db`.
-* For each object file: get account, container and object name from XFS attributes.
-* For each account/container database file: get account and container database.
+    * Walk a given path and search for files with suffix `.data, .ts or .db`.
+    * For each object file: get account, container and object name from XFS attributes.
+    * For each account/container database file: get account and container database.
 
-* Compute partition value using given ring file.
-* Build new name by replacing old partition value with new computed value.
-* Print `mkdir` and `mv` commands.
+    * Compute partition value using given ring file.
+    * Build new name by replacing old partition value with new computed value.
+    * Print `mkdir` and `mv` commands.
 
         swift-ring-tool -o /etc/swift/object.ring.gz /srv/node/ > move.sh
 
@@ -81,7 +83,9 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
     might be a good idea to use a well-balanced, fresh distribution in the long term. Execute the following steps to migrate the current ring to a new one. This is
     optional and I'd like to get some community feedback if this is really required.
 
-5. **Create a second ring without device mapping and rebalance this ring**  
+1. ** Restart Swift cluster **
+
+1. **Create a second ring without device mapping and rebalance this ring**  
     This is effectively a fresh ring with a well-distributed device distribution. The goal is to migrate the ring from the previous steps slowly to this ring.
 
         swift-ring-tool --reset object2.builder fresh.builder 
