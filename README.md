@@ -108,7 +108,7 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
     This will be done in several steps. The simplest way is to do this for every replica in one step. After every migration you need to wait until the 
     replicatos moved the partitions to their intended destionation. In this case the process looks like this:
 
-        swift-ring-tool --migrate increased.builder fresh.builder new.builder 0
+        swift-ring-tool --migrate object2.builder fresh.builder new.builder 0
         swift-ring-tool --show new.builder 
         Replica:        0 1 2
         -------------------------
