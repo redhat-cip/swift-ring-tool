@@ -81,7 +81,7 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
 
     The cluster can now be used with the increased partition power. However because devices are applied to two partitions in consecutive way (see example above) it
     might be a good idea to use a well-balanced, fresh distribution in the long term. Execute the following steps to migrate the current ring to a new one. This is
-    optional and I'd like to get some community feedback if this is really required.
+    optional and I'd like to get some community feedback if this is really required. 
 
 1. **Restart Swift cluster**
 
