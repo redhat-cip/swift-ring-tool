@@ -66,7 +66,7 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
     * For each account/container database file: get account and container database.
     * Compute partition value using given ring file.
     * Build new name by replacing old partition value with new computed value.
-    * Print `mkdir` and `mv` commands.
+    * Print `mkdir` and `mv` commands. 
 
         swift-ring-tool -o /etc/swift/object.ring.gz /srv/node/ > move.sh
 
