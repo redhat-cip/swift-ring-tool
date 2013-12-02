@@ -58,8 +58,7 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
     Object access will fail until the next step is finished. The downtime depends on the amount of objects on each disk and disk speed.
 
 1. **Move objects to new partitions**  
-    This is basically just a renaming on the same device, thus no heavy data movement is required in this step. Doing this in parallel on all storage nodes
-    will take only some minutes for the whole cluster and minimizes downtime. It works like this:
+    This is basically just a renaming on the same device, thus no heavy data movement is required in this step. Doing this in parallel on all storage nodes will take only some minutes for the whole cluster and minimizes downtime. It works like this:
 
     * Walk a given path and search for files with suffix `.data, .ts or .db`.
     * For each object file: get account, container and object name from XFS attributes.
@@ -78,11 +77,9 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
         mkdir -p /srv/node/sdaa1/objects/403453/8c8/627fd992d66948fed385d5b21e44a8c8
         mv /srv/node/sdaa1/objects/12607/8c8/627fd992d66948fed385d5b21e44a8c8/1354395490.07095.data /srv/node/sdaa1/objects/403453/8c8/627fd992d66948fed385d5b21e44a8c8/1354395490.07095.data
 
-    Watch for any errors and check move script. **RECHECK. You might suffer from a severe data loss!** Execute move script.  
+    Watch for any errors and check move script. **RECHECK. You might suffer from a severe data loss!** Execute move script.
 
-    The cluster can now be used with the increased partition power. However because devices are applied to two partitions in consecutive way (see example above) it
-    might be a good idea to use a well-balanced, fresh distribution in the long term. Execute the following steps to migrate the current ring to a new one. This is
-    optional and I'd like to get some community feedback if this is really required. 
+    The cluster can now be used with the increased partition power. However because devices are applied to two partitions in consecutive way (see example above) it might be a good idea to use a well-balanced, fresh distribution in the long term. Execute the following steps to migrate the current ring to a new one. This is optional and I'd like to get some community feedback if this is really required. 
 
 1. **Restart Swift cluster**
 
