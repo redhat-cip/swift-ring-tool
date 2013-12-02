@@ -64,7 +64,6 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
     * Walk a given path and search for files with suffix `.data, .ts or .db`.
     * For each object file: get account, container and object name from XFS attributes.
     * For each account/container database file: get account and container database.
-
     * Compute partition value using given ring file.
     * Build new name by replacing old partition value with new computed value.
     * Print `mkdir` and `mv` commands.
