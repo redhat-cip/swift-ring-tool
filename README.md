@@ -78,10 +78,14 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
         mv /srv/node/sdaa1/objects/12607/8c8/627fd992d66948fed385d5b21e44a8c8/1354395490.07095.data /srv/node/sdaa1/objects/403453/8c8/627fd992d66948fed385d5b21e44a8c8/1354395490.07095.data
 
     Watch for any errors and check move script. **RECHECK. You might suffer from a severe data loss!** Execute move script.
-
-    The cluster can now be used with the increased partition power. However because devices are applied to two partitions in consecutive way (see example above) it might be a good idea to use a well-balanced, fresh distribution in the long term. Execute the following steps to migrate the current ring to a new one. This is optional and I'd like to get some community feedback if this is really required. 
-
+    
 1. **Restart Swift cluster**
+    
+    Database and object files are now on the correct partititons; however it is likely that the databases/object files are stored on 
+    handoff partitions. Swift replicatores will take care of this and move data to their primary locations (this will take some time
+    of course).
+
+    The cluster can now be used with the increased partition power. However because devices are applied to two partitions in consecutive way (see example above) it might be a good idea to use a well-balanced, fresh distribution in the long term. Execute the following steps to migrate the current ring to a new one. This is optional and I'd like to get some community feedback if this is really required.
 
 1. **Create a second ring without device mapping and rebalance this ring**  
     This is effectively a fresh ring with a well-distributed device distribution. The goal is to migrate the ring from the previous steps slowly to this ring.
