@@ -28,7 +28,8 @@ import sys
 import xattr
 
 from swift.common.ring import Ring
-from swift.common.db import AccountBroker, ContainerBroker
+from swift.account.backend import AccountBroker
+from swift.container.backend import ContainerBroker
 
 
 def migrate_ring(source_ring, target_ring, replica, fraction=0.1):
