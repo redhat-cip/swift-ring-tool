@@ -184,7 +184,6 @@ def main():
     elif options.show:
         with open(args[0]) as src_ring_fd:
             src_ring = pickle.load(src_ring_fd)
-            print "Replica:\t0 1 2"
             print "-" * 25
             for part in range(src_ring['parts']):
                 devices = []
