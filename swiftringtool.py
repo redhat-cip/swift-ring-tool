@@ -32,47 +32,6 @@ from swift.account.backend import AccountBroker
 from swift.container.backend import ContainerBroker
 
 
-def migrate_ring(source_ring, target_ring, replica, fraction=0.1):
-    """ Copies partitions of one replica from one ring to another.
-
-    Useful to slowly migrate partition distribution between two rings.
-    Both rings must have identical devices, partition power and number of 
-    replicas. See ring_reset_partitions(ring) to create a ring with a fresh
-    partition distribution and otherwise identical settings.  """
-
-    new_ring = copy.deepcopy(source_ring)
-    dev_part_count = {}
-
-    if source_ring['parts'] != target_ring['parts']:
-        raise Exception('Partition powers not equal. Aborting.')
-    
-    if not 0.0 < fraction <= 1.0:
-        raise Exception('Invalid fraction value. Must be > 0 and <= 1.0.')
-
-    migrate_parts = int(target_ring['parts']*fraction)
-    print "Reassigning %d partitions from replica %d" % (migrate_parts, replica)
-    
-    arr = target_ring['_replica2part2dev'][replica]
-
-    for part in range(migrate_parts):
-        dev = arr[part]
-        new_ring['_replica2part2dev'][replica][part] = dev
-
-    for replica in target_ring['_replica2part2dev']:
-        for partition in replica:
-            device = replica[partition]
-            if device not in dev_part_count:
-                dev_part_count[device] = 0
-            dev_part_count[device] += 1
-
-    for device in new_ring['devs']:
-        if device:
-            device['parts'] = dev_part_count[device['id']]
-            device['parts_wanted'] = 0
-
-    return new_ring
-
-
 def ring_shift_power(ring):
     """ Returns ring with partition power increased by one. 
    
@@ -226,7 +185,6 @@ def main():
     parser = optparse.OptionParser()
     parser.add_option('-r', '--reset', action='store_true')
     parser.add_option('-i', '--increase', action='store_true')
-    parser.add_option('-m', '--migrate', action='store_true')
     parser.add_option('-s', '--show', action='store_true')
     parser.add_option('-o', '--objects', action='store_true')
     parser.add_option('-c', '--containers', action='store_true')
@@ -248,20 +206,6 @@ def main():
                 dst_ring = ring_shift_power(src_ring)
                 pickle.dump(dst_ring, dst_ring_fd, protocol=2)
    
-    elif options.migrate:
-        with open(args[0]) as src_ring_fd:
-            with open(args[2], "wb") as dst_ring_fd:
-                with open(args[1]) as target_ring_fd:
-                    replica = int(args[3])
-                    fraction = float(args[4])
-
-                    src_ring = pickle.load(src_ring_fd)
-                    target_ring = pickle.load(target_ring_fd)
-                    dst_ring = migrate_ring(src_ring, target_ring,
-                                            replica, fraction)
-
-                    pickle.dump(dst_ring, dst_ring_fd, protocol=2)
-
     elif options.show:
         with open(args[0]) as src_ring_fd:
             src_ring = pickle.load(src_ring_fd)
@@ -292,7 +236,6 @@ def main():
     else:
         print "Usage: %s [-r|--reset] <inputfile> <outputfile>" % sys.argv[0]
         print "Usage: %s [-i|--increase] <inputfile> <outputfile>" % sys.argv[0]
-        print "Usage: %s [-m|--migrate] <inputfile> <targetfile> <outputfile> <replica> <fraction>" % sys.argv[0]
         print "Usage: %s [-s|--show] <inputfile>" % sys.argv[0]
         print "Usage: %s [-o|--objects] <ringfile> <path>" % sys.argv[0]
         print "Usage: %s [-c|--containers] <ringfile> <path>" % sys.argv[0]
