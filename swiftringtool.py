@@ -64,24 +64,7 @@ def ring_shift_power(ring):
     
     ring['part_power'] += 1
     ring['parts'] *= 2
-    
-    return ring
-
-
-def ring_reset_partitions(ring):
-    """ Takes an existing ring and removes device mapping.
-
-    Afterwards a rebalance is required to assign partitions to devices. """
-
-    for dev in ring['devs']:
-        if dev:
-            dev['parts'] = 0
-
-    ring['_replica2part2dev'] = None 
-    ring['_last_part_moves'] = None
-    ring['_last_part_moves_epoch'] = None
-    ring['devs_changed'] = True
-    ring['version'] = 1
+    ring['version'] += 1
 
     return ring
 
@@ -183,7 +166,6 @@ def main():
     """ Main method... """
 
     parser = optparse.OptionParser()
-    parser.add_option('-r', '--reset', action='store_true')
     parser.add_option('-i', '--increase', action='store_true')
     parser.add_option('-s', '--show', action='store_true')
     parser.add_option('-o', '--objects', action='store_true')
@@ -192,14 +174,7 @@ def main():
 
     (options, args) = parser.parse_args()
 
-    if options.reset:
-        with open(args[0]) as src_ring_fd:
-            with open(args[1], "wb") as dst_ring_fd:
-                src_ring = pickle.load(src_ring_fd)
-                dst_ring = ring_reset_partitions(src_ring)
-                pickle.dump(dst_ring, dst_ring_fd, protocol=2)
- 
-    elif options.increase:
+    if options.increase:
         with open(args[0]) as src_ring_fd:
             with open(args[1], "wb") as dst_ring_fd:
                 src_ring = pickle.load(src_ring_fd)
@@ -234,7 +209,6 @@ def main():
         find_all_files(ringfile, path, options)
  
     else:
-        print "Usage: %s [-r|--reset] <inputfile> <outputfile>" % sys.argv[0]
         print "Usage: %s [-i|--increase] <inputfile> <outputfile>" % sys.argv[0]
         print "Usage: %s [-s|--show] <inputfile>" % sys.argv[0]
         print "Usage: %s [-o|--objects] <ringfile> <path>" % sys.argv[0]
