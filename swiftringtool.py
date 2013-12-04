@@ -42,6 +42,7 @@ def ring_shift_power(ring):
 
     Objects have to be moved when using this ring. Please see README.md """
 
+    ring = copy.deepcopy(ring)
 
     new_replica2part2dev = []
     for replica in ring['_replica2part2dev']:
