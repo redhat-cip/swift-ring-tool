@@ -28,8 +28,11 @@ import sys
 import xattr
 
 from swift.common.ring import Ring
-from swift.account.backend import AccountBroker
-from swift.container.backend import ContainerBroker
+try:
+    from swift.common.db import AccountBroker, ContainerBroker
+except ImportError:
+    from swift.account.backend import AccountBroker
+    from swift.container.backend import ContainerBroker
 
 
 def ring_shift_power(ring):
