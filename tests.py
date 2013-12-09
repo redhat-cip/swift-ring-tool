@@ -20,7 +20,7 @@ import unittest
 import mock
 import pickle
 
-from swiftringtool import increase_partition_power, FileMover
+from swiftringtool import increase_partition_power, FileMover, main
 from swift.common.ring import builder
 
 
@@ -31,7 +31,7 @@ class RingToolTest(unittest.TestCase):
                 self.move_object_files = True
                 self.move_container_dbs = True
                 self.move_account_dbs = True
-                self.ringfile = "testring"
+                self.ring = "testring"
                 self.path = "testdir"
 
         self.dummy_options = DummyOptions()
@@ -118,3 +118,10 @@ class RingToolTest(unittest.TestCase):
             self.assertEqual(info.get('account'), 'account')
             self.assertEqual(info.get('container'), 'container')
             self.assertEqual(info.get('object'), 'object')
+
+    @mock.patch('__builtin__.open')
+    @mock.patch('swiftringtool.FileMover')    
+    @mock.patch('swiftringtool.increase_partition_power')    
+    def test_main(self, mock_increase, mock_filemover, mock_open):
+        ret = main(['--move-object-files', '--ring', 'ringfile', '--path', '/srv/node/'])
+        self.assertTrue(mock_filemover.called)

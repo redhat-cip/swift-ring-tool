@@ -20,9 +20,10 @@
 import array
 import copy
 import logging
-import optparse
+import argparse
 import os
 import cPickle as pickle
+import sys
 import xattr
 
 from swift.common.ring import Ring
@@ -74,7 +75,7 @@ def increase_partition_power(ring):
 
 class FileMover(object):
     def __init__(self, options, *_args, **_kwargs):
-        self.ring = Ring(options.ringfile)
+        self.ring = Ring(options.ring)
         self.path = options.path
         self.options = options
 
@@ -161,33 +162,34 @@ class FileMover(object):
             logging.warning("FAILED TO MOVE %s -> %s" % (filename, newname))
 
 
-def main():
-    parser = optparse.OptionParser()
-    parser.add_option(
+def main(args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
         '--increase-partition-power',
         action='store_true',
         help='Increase the partition power of the given ring builder file')
-    parser.add_option(
+    parser.add_argument(
         '--move-object-files',
         action='store_true',
         help='Move all object files on given path and move \
         to computed partition')
-    parser.add_option(
+    parser.add_argument(
         '--move-container-dbs',
         action='store_true',
         help='Move all container databases on given path and \
         move to computed partition')
-    parser.add_option(
+    parser.add_argument(
         '--move-account-dbs',
         action='store_true',
         help='Move all account databases on given path and \
         move to computed partition')
-    parser.add_option("-r", "--ring", action="store", type="string",
+    parser.add_argument("-r", "--ring", action="store", type=str,
                       help="Ring builder file")
-    parser.add_option(
-        "-p", "--path", action="store", type="string",
+    parser.add_argument(
+        "-p", "--path", action="store", type=str,
         help="Storage path of accounts, containers and objects")
-    (options, args) = parser.parse_args()
+
+    options = parser.parse_args(args)
 
     if options.increase_partition_power and options.ring:
         with open(options.ring) as src_ring_fd:
@@ -210,4 +212,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
