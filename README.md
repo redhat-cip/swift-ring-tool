@@ -49,29 +49,26 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
     An object assigned to partition 2 on one ring will be assigned to partition 4 OR 5 on a ring when the partition power is increased by one.
     swift-ring-tool follows this scheme in assigning devices to partitions; the objects just need to be renamed on the same device which is very fast.
         
-
-1. **Stop Swift cluster, copy updated ring to storage & proxy nodes**  
-    Object access will fail until the next step is finished. The downtime depends on the amount of objects on each disk and disk speed.
-
 1. **Move objects to new partitions**
-    Since the partitions changed it is required to move the files to their new
-    partitions. This is basically just a renaming on the same device, thus no
-    heavy data movement is required in this step. 
     
-        python swiftringtool --move-object-files /etc/swift/object.ring.gz /srv/node/
-    
-    It works like this:
+    Just increasing the partition power of the ring and deploying this ring to the proxy & storage servers is just half the way.
+    Since the partitions changed it is required to move the files to their new partitions. This is basically just a renaming on 
+    the same device, thus no heavy data movement is required in this step. It works like this:
 
-    * Walk a given path and search for files with suffix `.data, .ts or .db`.
-    * For each object file: get account, container and object name from XFS attributes.
-    * For each account/container database file: get account and container database.
-    * Compute partition value using given ring file.
-    * Build new name by replacing old partition value with new computed value.
-    * Create new directory if not existing and move file to new directory.  
+    1. Walk a given path and search for files with suffix `.data, .ts or .db`
+    1. For each object file: get account, container and object name from XFS attributes
+    1. For each account/container database file: get account and container name
+    1. Compute partition value using given ring file
+    1. Build new name by replacing old partition value with new computed value
+    1. Create new directory if not existing and move file to new directory
 
-    
-1. **Restart Swift cluster**
+    To move files to their new partition, do the following on all storage nodes (most likely in parallel):
+
+    1. Stop all services on the Swift cluster
+    1. Copy updated ring to storage & proxy nodes
+    1. Move all files on storage nodes (using `python swiftringtool.py --move-\*`)
+    1. Restart Swift cluster
     
     Database and object files are now on the correct partititons; however it is likely that the databases/object files are stored on 
-    handoff partitions. Swift replicatores will take care of this and move data to their primary locations (this will take some time
+    handoff partitions. Swift replicators will take care of this and move data to their primary locations (this will take some time
     of course).
