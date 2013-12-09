@@ -1,6 +1,6 @@
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 #!/usr/bin/env python
-# Copyright (c) 2013 Christian Schwede <info@cschwede.de>
+# Copyright (c) 2013 Christian Schwede <christian.schwede@enovance.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,19 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""" swift-ring-tool can be used to migrate a cluster to a new ring with
-    an increased partition power and minimal downtime. """
+""" Tool to increase the partition power of a Swift ring """
 
 import array
 import copy
+import logging
 import optparse
 import os
 import cPickle as pickle
-import sqlite3
-import sys
 import xattr
 
 from swift.common.ring import Ring
+
 try:
     from swift.common.db import AccountBroker, ContainerBroker
 except ImportError:
@@ -35,9 +34,9 @@ except ImportError:
     from swift.container.backend import ContainerBroker
 
 
-def ring_shift_power(ring):
-    """ Returns ring with partition power increased by one. 
-   
+def increase_partition_power(ring):
+    """ Returns ring with partition power increased by one.
+
     Devices will be assigned to partitions like this:
 
     OLD: 0, 3, 7, 5, 2, 1, ...
@@ -55,17 +54,17 @@ def ring_shift_power(ring):
             new_replica.append(device)  # append device a second time
         new_replica2part2dev.append(new_replica)
     ring['_replica2part2dev'] = new_replica2part2dev
-    
+
     for device in ring['devs']:
         if device:
             device['parts'] *= 2
-    
+
     new_last_part_moves = []
     for partition in ring['_last_part_moves']:
         new_last_part_moves.append(partition)
         new_last_part_moves.append(partition)
     ring['_last_part_moves'] = new_last_part_moves
-    
+
     ring['part_power'] += 1
     ring['parts'] *= 2
     ring['version'] += 1
@@ -73,150 +72,141 @@ def ring_shift_power(ring):
     return ring
 
 
-def get_acc_cont_obj(filename):
-    """ Returns account, container, object from XFS object metadata """
+class FileMover(object):
+    def __init__(self, options, *_args, **_kwargs):
+        self.ring = Ring(options.ringfile)
+        self.path = options.path
+        self.options = options
 
-    obj_fd = open(filename)
-    metadata = ''
-    key = 0 
-    try:
-        while True:
-            metadata += xattr.getxattr(obj_fd,
-                '%s%s' % ("user.swift.metadata", (key or '')))
-            key += 1
-    except IOError:
-        pass
-    obj_fd.close()
-    object_name = pickle.loads(metadata).get('name')
-    account = object_name.split('/')[1]
-    container = object_name.split('/')[2]
-    obj = '/'.join(object_name.split('/')[3:])
+    def _get_acc_cont_obj(self, filename):
+        """ Returns account, container, object from XFS object metadata """
 
-    return (account, container, obj)
+        obj_fd = open(filename)
+        metadata = ''
+        key = 0
+        try:
+            while True:
+                metadata += xattr.getxattr(
+                    obj_fd, '%s%s' % ("user.swift.metadata", (key or '')))
+                key += 1
+        except IOError:
+            pass
+        obj_fd.close()
+        object_name = pickle.loads(metadata).get('name')
+        account = object_name.split('/')[1]
+        container = object_name.split('/')[2]
+        obj = '/'.join(object_name.split('/')[3:])
 
+        return {'account': account,
+                'container': container,
+                'object': obj}
 
-def find_all_files(ringfile, path, options):
-    """ Walks filesystem and prints move commands """
-    path_elements = len(path.strip('/').split('/'))
-
-    ring = Ring(ringfile)
-    for root, _dirs, files in os.walk(path):
-        if not "quarantined" in root:
+    def start(self):
+        for root, _dirs, files in os.walk(self.path):
+            if "quarantined" in root:
+                continue
             for filename in files:
-                oldname = os.path.join(root, filename)
-                path = '/'.join(root.split('/')[:path_elements+2])
-                if (options.objects is True and 
-                    oldname.split('.')[-1] in ["data", "ts"]):
+                fullname = os.path.join(root, filename)
+                if (self.options.move_object_files is True and
+                        fullname.split('.')[-1] in ["data", "ts"]):
+                    self._move_file(fullname, "objects")
 
-                    acc, cont, obj = get_acc_cont_obj(oldname)
-                    new_part, _nodes = ring.get_nodes(acc, cont, obj)
+                if (self.options.move_container_dbs is True and
+                        fullname.split('.')[-1] in ["db"] and
+                        "containers" in fullname):
+                    self._move_file(fullname, "containers")
 
-                    oldname_parts = oldname.split('/')
-                    part_pos = oldname_parts.index('objects')
-                    oldname_parts[part_pos+1] = str(new_part)
-                    newname = '/'.join(oldname_parts)
-                    newdir = '/'.join(oldname_parts[:-1])
+                if (self.options.move_account_dbs is True and
+                        fullname.split('.')[-1] in ["db"] and
+                        "accounts" in fullname):
+                    self._move_file(fullname, "accounts")
 
-                    print "#%s/%s/%s" % (acc, cont, obj)
-                    print "mkdir -p %s" % newdir
-                    print "mv %s %s" % (oldname, newname)
-                    print
+    def _move_file(self, filename, filetype):
+        if filetype == 'accounts':
+            broker = AccountBroker(filename)
+            info = broker.get_info()
+        elif filetype == 'containers':
+            broker = ContainerBroker(filename)
+            info = broker.get_info()
+        elif filetype == 'objects':
+            info = self._get_acc_cont_obj(filename)
+        else:
+            raise Exception
 
-                if (options.containers is True and 
-                    oldname.split('.')[-1] in ["db"] and
-                    "containers" in oldname):
+        acc = info.get('account')
+        cont = info.get('container')
+        obj = info.get('object')
 
-                    brkr = ContainerBroker(oldname)
-                    info = brkr.get_info()
-                    acc = info['account']
-                    cont = info['container']
+        partition, _nodes = self.ring.get_nodes(acc, cont, obj)
 
-                    new_part, _nodes = ring.get_nodes(acc, cont)
+        # replace the old partition value with the new one
+        # old name like '/a/b/objects/123/c/d'
+        # new name like '/a/b/objects/456/c/d'
+        filename_parts = filename.split('/')
+        part_pos = filename_parts.index(filetype)
+        filename_parts[part_pos+1] = str(partition)
+        newname = '/'.join(filename_parts)
 
-                    oldname_parts = oldname.split('/')
-                    part_pos = oldname_parts.index('containers')
-                    oldname_parts[part_pos+1] = str(new_part)
-                    newname = '/'.join(oldname_parts)
-                    newdir = '/'.join(oldname_parts[:-1])
+        dst_dir = os.path.dirname(newname)
+        try:
+            os.makedirs(dst_dir)
+            logging.info("mkdir %s" % dst_dir)
+        except OSError as ex:
+            logging.info("mkdir %s failed: %s" % (dst_dir, ex))
 
-                    print "#%s/%s" % (acc, cont)
-                    print "mkdir -p %s" % newdir
-                    print "mv %s %s" % (oldname, newname)
-                    print
-
-                if (options.accounts is True and 
-                    oldname.split('.')[-1] in ["db"] and
-                    "accounts" in oldname):
-
-                    brkr = AccountBroker(oldname)
-                    info = brkr.get_info()
-                    acc = info['account']
-
-                    new_part, _nodes = ring.get_nodes(acc)
-
-                    oldname_parts = oldname.split('/')
-                    part_pos = oldname_parts.index('accounts')
-                    oldname_parts[part_pos+1] = str(new_part)
-                    newname = '/'.join(oldname_parts)
-                    newdir = '/'.join(oldname_parts[:-1])
-
-                    print "#%s" % (acc, )
-                    print "mkdir -p %s" % newdir
-                    print "mv %s %s" % (oldname, newname)
-                    print
+        try:
+            os.rename(filename, newname)
+            logging.info("movedv %s -> %s" % (filename, newname))
+        except OSError as ex:
+            logging.warning("FAILED TO MOVE %s -> %s" % (filename, newname))
 
 
 def main():
-    """ Main method... """
-
     parser = optparse.OptionParser()
-    parser.add_option('-i', '--increase', action='store_true')
-    parser.add_option('-s', '--show', action='store_true')
-    parser.add_option('-o', '--objects', action='store_true')
-    parser.add_option('-c', '--containers', action='store_true')
-    parser.add_option('-a', '--accounts', action='store_true')
-
+    parser.add_option(
+        '--increase-partition-power',
+        action='store_true',
+        help='Increase the partition power of the given ring builder file')
+    parser.add_option(
+        '--move-object-files',
+        action='store_true',
+        help='Move all object files on given path and move \
+        to computed partition')
+    parser.add_option(
+        '--move-container-dbs',
+        action='store_true',
+        help='Move all container databases on given path and \
+        move to computed partition')
+    parser.add_option(
+        '--move-account-dbs',
+        action='store_true',
+        help='Move all account databases on given path and \
+        move to computed partition')
+    parser.add_option("-r", "--ring", action="store", type="string",
+                      help="Ring builder file")
+    parser.add_option(
+        "-p", "--path", action="store", type="string",
+        help="Storage path of accounts, containers and objects")
     (options, args) = parser.parse_args()
 
-    if options.increase:
-        with open(args[0]) as src_ring_fd:
-            with open(args[1], "wb") as dst_ring_fd:
-                src_ring = pickle.load(src_ring_fd)
-                dst_ring = ring_shift_power(src_ring)
-                pickle.dump(dst_ring, dst_ring_fd, protocol=2)
-   
-    elif options.show:
-        with open(args[0]) as src_ring_fd:
+    if options.increase_partition_power and options.ring:
+        with open(options.ringfile) as src_ring_fd:
             src_ring = pickle.load(src_ring_fd)
-            print "-" * 25
-            for part in range(src_ring['parts']):
-                devices = []
-                for replica in src_ring['_replica2part2dev']:
-                    device = replica[part]
-                    devices.append(str(device))
-                print "Partition %d:\t%s" % (part, ' '.join(devices))
 
-    elif options.objects:
-        ringfile = args[0]
-        path = args[1]
-        find_all_files(ringfile, path, options)
+        dst_ring = increase_partition_power(src_ring)
 
-    elif options.containers:
-        ringfile = args[0]
-        path = args[1]
-        find_all_files(ringfile, path, options)
- 
-    elif options.accounts:
-        ringfile = args[0]
-        path = args[1]
-        find_all_files(ringfile, path, options)
- 
+        with open(options.ringfile, "wb") as dst_ring_fd:
+            pickle.dump(dst_ring, dst_ring_fd, protocol=2)
+
+    elif (options.move_object_files or
+          options.move_container_dbs or
+          options.move_account_dbs) and options.ring and options.path:
+
+        fm = FileMover(options)
+        fm.start()
+
     else:
-        print "Usage: %s [-i|--increase] <inputfile> <outputfile>" % sys.argv[0]
-        print "Usage: %s [-s|--show] <inputfile>" % sys.argv[0]
-        print "Usage: %s [-o|--objects] <ringfile> <path>" % sys.argv[0]
-        print "Usage: %s [-c|--containers] <ringfile> <path>" % sys.argv[0]
-        print "Usage: %s [-a|--accounts] <ringfile> <path>" % sys.argv[0]
+        parser.print_help()
 
 
 if __name__ == "__main__":

@@ -15,41 +15,92 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import pickle
 import unittest
 
 import mock
-import xattr
 
-from swiftringtool import ring_shift_power, get_acc_cont_obj
+from swiftringtool import increase_partition_power, FileMover
 from swift.common.ring import builder
 
 
 class RingToolTest(unittest.TestCase):
-    def test_ring_shift_power(self):
-        rb = builder.RingBuilder(8, 3, 1)
-        rb.add_dev({'id': 0, 'zone': 0, 'weight': 1, 'ip': '127.0.0.1',
-                    'port': 10000, 'device': 'sda1', 'region': 0})
-        rb.add_dev({'id': 1, 'zone': 1, 'weight': 1, 'ip': '127.0.0.1',
-                    'port': 10001, 'device': 'sda1', 'region': 0})
-        rb.add_dev({'id': 2, 'zone': 2, 'weight': 1, 'ip': '127.0.0.1',
-                    'port': 10002, 'device': 'sda1', 'region': 0})
-        rb.rebalance()
-        
-        b = builder.RingBuilder(1, 1, 1)  # Dummy values
-        b.copy_from(rb)
+    def setUp(self):
+        class DummyOptions(object):
+            def __init__(self):
+                self.move_object_files = True
+                self.move_container_dbs = True
+                self.move_account_dbs = True
+                self.ringfile = "testring"
+                self.path = "testdir"
 
-        ring = b.to_dict()
-        new_ring = ring_shift_power(ring)
+        self.dummy_options = DummyOptions()
+
+        ringbuilder = builder.RingBuilder(8, 3, 1)
+        ringbuilder.add_dev({'id': 0, 'zone': 0, 'weight': 1,
+                             'ip': '127.0.0.1', 'port': 10000,
+                             'device': 'sda1', 'region': 0})
+        ringbuilder.add_dev({'id': 1, 'zone': 1, 'weight': 1,
+                             'ip': '127.0.0.1', 'port': 10001,
+                             'device': 'sda1', 'region': 0})
+        ringbuilder.add_dev({'id': 2, 'zone': 2, 'weight': 1,
+                             'ip': '127.0.0.1', 'port': 10002,
+                             'device': 'sda1', 'region': 0})
+        ringbuilder.rebalance()
+        self.ringbuilder = ringbuilder
+        self.testring_filename = "testring"
+        self.ringbuilder.get_ring().save(self.testring_filename)
+
+    def test_increase_partition_power(self):
+        dummyring_builder = builder.RingBuilder(1, 1, 1)
+        dummyring_builder.copy_from(self.ringbuilder)
+        ring = dummyring_builder.to_dict()
+
+        new_ring = increase_partition_power(ring)
         self.assertEqual(ring.get('part_power'), 8)
         self.assertEqual(new_ring.get('part_power'), 9)
         self.assertEqual(new_ring.get('version'), 4)
 
-    @mock.patch('__builtin__.open')
-    def test_get_acc_cont_obj(self, open_mock):
-        metadata = pickle.dumps({'name': '/a/c/o'})
-        xattr.getxattr = mock.Mock(side_effect=[metadata, IOError])
-        acc, cont, obj = get_acc_cont_obj("filename")
-        self.assertEqual(acc, 'a')
-        self.assertEqual(cont, 'c')
-        self.assertEqual(obj, 'o')
+    @mock.patch('os.walk')
+    def test_filemover_start(self, mock_walk):
+        # Simulate Swift storage node files
+        mock_walk.return_value = [('accounts',
+                                   '_dirs',
+                                   ['account.db']),
+                                  ('containers',
+                                   '_dirs',
+                                   ['container.db']),
+                                  ('objects',
+                                   '_dirs',
+                                   ['object.data']),
+                                  ]
+
+        fm = FileMover(self.dummy_options)
+
+        fm._move_file = mock.Mock()
+        fm.start()
+        fm._move_file.assert_any_call('accounts/account.db',
+                                      'accounts')
+        fm._move_file.assert_any_call('containers/container.db',
+                                      'containers')
+        fm._move_file.assert_any_call('objects/object.data',
+                                      'objects')
+
+    @mock.patch('os.makedirs')
+    @mock.patch('os.rename')
+    def test_move_file(self, mock_rename, mock_makedirs):
+        fm = FileMover(self.dummy_options)
+
+        with self.assertRaises(Exception):
+            fm._move_file("filename", "dummy")
+
+        fm._get_acc_cont_obj = mock.Mock()
+        info = {'account': 'account',
+                'container': 'container',
+                'object': 'object'}
+        fm._get_acc_cont_obj.return_value = info
+
+        fm._move_file("node/objects/0/obj.data", "objects")
+
+        mock_rename.assert_called_with('node/objects/0/obj.data',
+                                       'node/objects/61/obj.data')
+        mock_makedirs.assert_called_with('node/objects/61')
