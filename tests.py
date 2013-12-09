@@ -18,6 +18,7 @@
 import unittest
 
 import mock
+import pickle
 
 from swiftringtool import increase_partition_power, FileMover
 from swift.common.ring import builder
@@ -104,3 +105,16 @@ class RingToolTest(unittest.TestCase):
         mock_rename.assert_called_with('node/objects/0/obj.data',
                                        'node/objects/61/obj.data')
         mock_makedirs.assert_called_with('node/objects/61')
+
+    @mock.patch('xattr.getxattr')
+    def test_get_acc_cont_obj(self, mock_xattr):
+        pickled_metadata = pickle.dumps({'name': '/account/container/object'})
+        mock_xattr.side_effect = [pickled_metadata, IOError]
+        fm = FileMover(self.dummy_options)
+
+        with mock.patch('__builtin__.open') as mock_open:
+            info = fm._get_acc_cont_obj("filename")
+            mock_open.assert_called_with("filename")
+            self.assertEqual(info.get('account'), 'account')
+            self.assertEqual(info.get('container'), 'container')
+            self.assertEqual(info.get('object'), 'object')
