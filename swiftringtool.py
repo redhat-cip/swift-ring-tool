@@ -190,12 +190,12 @@ def main():
     (options, args) = parser.parse_args()
 
     if options.increase_partition_power and options.ring:
-        with open(options.ringfile) as src_ring_fd:
+        with open(options.ring) as src_ring_fd:
             src_ring = pickle.load(src_ring_fd)
 
         dst_ring = increase_partition_power(src_ring)
 
-        with open(options.ringfile, "wb") as dst_ring_fd:
+        with open(options.ring, "wb") as dst_ring_fd:
             pickle.dump(dst_ring, dst_ring_fd, protocol=2)
 
     elif (options.move_object_files or
