@@ -1,6 +1,11 @@
 # swift-ring-tool
 
 swift-ring-tool is a tool to increase the partition power of an OpenStack Swift ring without the need to copy all data to a new cluster.
+Migrating data from a cluster requires a second cluster with at least the size of the origin, which might not be applicable.
+
+The partition power for a Swift cluster has to be choosen carefully. Chosing a high value for a small cluster increases replication
+time significantly; however a low number limits the maximum size of a cluster. This tool makes it possible to increase the partition
+power; however a short downtime is required because files need to be renamed on the storage nodes.
 
 **Warning! By using this tool, you risk complete data loss. Test this tool in advance and make sure it works for you.**
 
