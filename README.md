@@ -15,36 +15,27 @@ swift-ring-tool is a tool to increase the partition power of an OpenStack Swift 
     You can test this with swift-get-nodes:
 
         swift-get-nodes /etc/swift/object.ring.gz account container object
-
+        [...]
         Partition   988
         Hash        3dc84eca83ff53e200ed3268b3ace9c2
-
         [...]
-
-        curl -I -XHEAD "http://127.0.0.1:6040/sdb4/988/account/container/object"
-        curl -I -XHEAD "http://127.0.0.1:6020/sdb2/988/account/container/object"
-        curl -I -XHEAD "http://127.0.0.1:6030/sdb3/988/account/container/object"
-        curl -I -XHEAD "http://127.0.0.1:6010/sdb1/988/account/container/object" # [Handoff]
-
-
+        ssh 127.0.0.1 "ls -lah ${DEVICE:-/srv/node}/sdb4/objects/988/9c2/3dc84eca83ff53e200ed3268b3ace9c2/"
+        ssh 127.0.0.1 "ls -lah ${DEVICE:-/srv/node}/sdb2/objects/988/9c2/3dc84eca83ff53e200ed3268b3ace9c2/"
+        ssh 127.0.0.1 "ls -lah ${DEVICE:-/srv/node}/sdb3/objects/988/9c2/3dc84eca83ff53e200ed3268b3ace9c2/"
+        ssh 127.0.0.1 "ls -lah ${DEVICE:-/srv/node}/sdb1/objects/988/9c2/3dc84eca83ff53e200ed3268b3ace9c2/" # [Handoff]
+        
     After increasing the partition power the partition changes, but not the hash itself:
-
-
-        python swiftringtool.py --increase-partition-power -r /etc/swift/object.builder
+        
+        python swiftringtool.py  --increase-partition-power -r /etc/swift/object.builder 
         swift-ring-builder /etc/swift/object.builder write_ring
         swift-get-nodes /etc/swift/object.ring.gz account container object
-        
         [...]
-        
-        Partition   494
+        Partition   1977
         Hash        3dc84eca83ff53e200ed3268b3ace9c2
-        
         [...]
-        
-        curl -I -XHEAD "http://127.0.0.1:6040/sdb4/494/account/container/object"
-        
-        [...]
-
+        ssh 127.0.0.1 "ls -lah ${DEVICE:-/srv/node}/sdb4/objects/1977/9c2/3dc84eca83ff53e200ed3268b3ace9c2/"
+        ssh 127.0.0.1 "ls -lah ${DEVICE:-/srv/node}/sdb2/objects/1977/9c2/3dc84eca83ff53e200ed3268b3ace9c2/"
+        ssh 127.0.0.1 "ls -lah ${DEVICE:-/srv/node}/sdb3/objects/1977/9c2/3dc84eca83ff53e200ed3268b3ace9c2/"
 
     An object assigned to partition 2 on one ring will be assigned to partition 4 OR 5 on a ring when the partition power is increased by one.
     swift-ring-tool follows this scheme in assigning devices to partitions; the objects just need to be renamed on the same device which is very fast.
