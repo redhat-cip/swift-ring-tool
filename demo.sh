@@ -44,4 +44,5 @@ python swiftringtool.py -v --move-object-files -r /etc/swift/object.ring.gz -p /
 read -p ""
 clear
 
+echo -e "Download will succeed now\n"
 swift download test testfile
