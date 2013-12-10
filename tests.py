@@ -18,7 +18,10 @@
 import unittest
 
 import mock
+import os
 import pickle
+import random
+import string
 
 from swiftringtool import increase_partition_power, FileMover, main
 from swift.common.ring import builder
@@ -27,14 +30,12 @@ from swift.common.ring import builder
 class RingToolTest(unittest.TestCase):
     def setUp(self):
         class DummyOptions(object):
-            def __init__(self):
+            def __init__(self, ringname):
                 self.move_object_files = True
                 self.move_container_dbs = True
                 self.move_account_dbs = True
-                self.ring = "testring"
+                self.ring = ringname
                 self.path = "testdir"
-
-        self.dummy_options = DummyOptions()
 
         ringbuilder = builder.RingBuilder(8, 3, 1)
         ringbuilder.add_dev({'id': 0, 'zone': 0, 'weight': 1,
@@ -48,8 +49,16 @@ class RingToolTest(unittest.TestCase):
                              'device': 'sda1', 'region': 0})
         ringbuilder.rebalance()
         self.ringbuilder = ringbuilder
-        self.testring_filename = "testring"
+        rand_suffix = ''.join(random.choice(string.digits) for x in range(10))
+        self.testring_filename = 'testring' + rand_suffix 
         self.ringbuilder.get_ring().save(self.testring_filename)
+        self.dummy_options = DummyOptions(self.testring_filename)
+
+    def tearDown(self):
+        try:
+            os.remove(self.testring_filename)
+        except IOError:
+            pass
 
     def test_increase_partition_power(self):
         dummyring_builder = builder.RingBuilder(1, 1, 1)
