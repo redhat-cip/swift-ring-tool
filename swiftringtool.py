@@ -193,7 +193,8 @@ def main(args):
 
     if options.increase_partition_power and options.ring:
         with open(options.ring) as src_ring_fd:
-            src_ring = pickle.load(src_ring_fd)
+            src_ring = src_ring_fd.read()
+            src_ring = pickle.loads(src_ring)
 
         dst_ring = increase_partition_power(src_ring)
 

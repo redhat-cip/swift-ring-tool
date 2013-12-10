@@ -119,9 +119,13 @@ class RingToolTest(unittest.TestCase):
             self.assertEqual(info.get('container'), 'container')
             self.assertEqual(info.get('object'), 'object')
 
-    @mock.patch('__builtin__.open')
     @mock.patch('swiftringtool.FileMover')    
-    @mock.patch('swiftringtool.increase_partition_power')    
-    def test_main(self, mock_increase, mock_filemover, mock_open):
+    def test_main(self, mock_filemover):
         ret = main(['--move-object-files', '--ring', 'ringfile', '--path', '/srv/node/'])
         self.assertTrue(mock_filemover.called)
+
+        pickled_metadata = pickle.dumps(self.ringbuilder.to_dict())
+        mo = mock.mock_open(read_data=pickled_metadata)
+        with mock.patch('__builtin__.open', mo, create=True) as mock_open:
+            ret = main(['--increase-partition-power', '--ring', 'ringfile'])
+            mock_open.assert_called_with('ringfile', 'wb')
