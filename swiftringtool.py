@@ -157,7 +157,7 @@ class FileMover(object):
 
         try:
             os.rename(filename, newname)
-            logging.info("movedv %s -> %s" % (filename, newname))
+            logging.info("moved %s -> %s" % (filename, newname))
         except OSError as ex:
             logging.warning("FAILED TO MOVE %s -> %s" % (filename, newname))
 
@@ -188,8 +188,13 @@ def main(args):
     parser.add_argument(
         "-p", "--path", action="store", type=str,
         help="Storage path of accounts, containers and objects")
+    parser.add_argument("-v", "--verbose", action="store_true"),
 
     options = parser.parse_args(args)
+
+    if options.verbose:
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
 
     if options.increase_partition_power and options.ring:
         with open(options.ring) as src_ring_fd:
