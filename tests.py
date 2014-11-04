@@ -23,7 +23,7 @@ import pickle
 import random
 import string
 
-from swiftringtool import increase_partition_power, FileMover, main
+from swiftringtool import increase_partition_power, decrease_partition_power, FileMover, main
 from swift.common.ring import builder
 
 
@@ -68,6 +68,16 @@ class RingToolTest(unittest.TestCase):
         new_ring = increase_partition_power(ring)
         self.assertEqual(ring.get('part_power'), 8)
         self.assertEqual(new_ring.get('part_power'), 9)
+        self.assertEqual(new_ring.get('version'), 4)
+
+    def test_decrease_partition_power(self):
+        dummyring_builder = builder.RingBuilder(1, 1, 1)
+        dummyring_builder.copy_from(self.ringbuilder)
+        ring = dummyring_builder.to_dict()
+
+        new_ring = decrease_partition_power(ring)
+        self.assertEqual(ring.get('part_power'), 8)
+        self.assertEqual(new_ring.get('part_power'), 7)
         self.assertEqual(new_ring.get('version'), 4)
 
     @mock.patch('os.walk')

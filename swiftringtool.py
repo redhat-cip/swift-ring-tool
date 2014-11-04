@@ -73,6 +73,39 @@ def increase_partition_power(ring):
     return ring
 
 
+def decrease_partition_power(ring):
+    """ Returns ring with partition power decreased by one.
+
+    Objects have to be moved when using this ring. Please see README.md """
+
+    ring = copy.deepcopy(ring)
+
+    new_replica2part2dev = []
+    for replica in ring['_replica2part2dev']:
+        new_replica = array.array('H')
+        for device in replica:
+            new_replica.append(device)
+            new_replica.append(device)  # append device a second time
+        new_replica2part2dev.append(new_replica)
+    ring['_replica2part2dev'] = new_replica2part2dev
+
+    for device in ring['devs']:
+        if device:
+            device['parts'] /= 2
+
+    new_last_part_moves = []
+    for partition in ring['_last_part_moves']:
+        new_last_part_moves.append(partition)
+        new_last_part_moves.append(partition)
+    ring['_last_part_moves'] = new_last_part_moves
+
+    ring['part_power'] -= 1
+    ring['parts'] /= 2
+    ring['version'] += 1
+
+    return ring
+
+
 class FileMover(object):
     def __init__(self, options, *_args, **_kwargs):
         self.ring = Ring(options.ring)
@@ -169,6 +202,10 @@ def main(args):
         action='store_true',
         help='Increase the partition power of the given ring builder file')
     parser.add_argument(
+        '--decrease-partition-power',
+        action='store_true',
+        help='Decrease the partition power of the given ring builder file')
+    parser.add_argument(
         '--move-object-files',
         action='store_true',
         help='Move all object files on given path and move \
@@ -202,6 +239,16 @@ def main(args):
             src_ring = pickle.loads(src_ring)
 
         dst_ring = increase_partition_power(src_ring)
+
+        with open(options.ring, "wb") as dst_ring_fd:
+            pickle.dump(dst_ring, dst_ring_fd, protocol=2)
+
+    elif options.decrease_partition_power and options.ring:
+        with open(options.ring) as src_ring_fd:
+            src_ring = src_ring_fd.read()
+            src_ring = pickle.loads(src_ring)
+
+        dst_ring = decrease_partition_power(src_ring)
 
         with open(options.ring, "wb") as dst_ring_fd:
             pickle.dump(dst_ring, dst_ring_fd, protocol=2)
