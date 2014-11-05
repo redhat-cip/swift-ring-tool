@@ -1,11 +1,15 @@
 # swift-ring-tool
 
-swift-ring-tool is a tool to increase the partition power of an OpenStack Swift ring without the need to copy all data to a new cluster.
-Migrating data from a cluster requires a second cluster with at least the size of the origin, which might not be applicable.
+swift-ring-tool is a tool to increase or decrease the partition power of an
+OpenStack Swift ring without the need to copy all data to a new cluster.
+Migrating data from a cluster requires a second cluster with at least the size
+of the origin, which might not be applicable.
 
-The partition power for a Swift cluster has to be choosen carefully. Chosing a high value for a small cluster increases replication
-time significantly; however a low number limits the maximum size of a cluster. This tool makes it possible to increase the partition
-power; however a short downtime is required because files need to be renamed on the storage nodes.
+The partition power for a Swift cluster has to be choosen carefully. Chosing a
+high value for a small cluster increases replication time significantly; however
+a low number limits the maximum size of a cluster. This tool makes it possible
+to increase or decreae the partition power; however a short downtime is required
+because files need to be renamed on the storage nodes.
 
 **Warning! By using this tool, you risk complete data loss. Test this tool in advance and make sure it works for you.**
 
@@ -15,7 +19,7 @@ power; however a short downtime is required because files need to be renamed on 
         key = hash_path(account, container, obj, raw_digest=True)
         part = struct.unpack_from('>I', key)[0] >> self._part_shift  # self._part_shif = 32 - partition_power
 
-    The keys (hash) of an object doesn't change, even when the partition power changes. The only thig that changes is the partition.
+    The keys (hash) of an object doesn't change, even when the partition power changes. The only thing that changes is the partition.
 
     You can test this with swift-get-nodes:
 
@@ -43,6 +47,7 @@ power; however a short downtime is required because files need to be renamed on 
         ssh 127.0.0.1 "ls -lah ${DEVICE:-/srv/node}/sdb3/objects/1977/9c2/3dc84eca83ff53e200ed3268b3ace9c2/"
 
     An object assigned to partition 2 on one ring will be assigned to partition 4 OR 5 on a ring when the partition power is increased by one.
+    Decreasing the partition power by one changes the partition in the same way, for example an object on partition 4 or 5 now resides on partition 2.
     swift-ring-tool follows this scheme in assigning devices to partitions; the objects just need to be renamed on the same device which is very fast.
         
 1. **Move objects to new partitions**
