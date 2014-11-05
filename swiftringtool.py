@@ -35,6 +35,15 @@ except ImportError:
     from swift.container.backend import ContainerBroker
 
 
+def get_confirmation():
+    msg = "WARNING! This operation might result in a severe data loss."
+    msg += " Are you really sure to proceed? "
+    inp = raw_input(msg)
+    if inp is not "yes":
+        print "Aborted."
+        sys.exit()
+
+
 def increase_partition_power(ring):
     """ Returns ring with partition power increased by one.
 
@@ -234,6 +243,7 @@ def main(args):
         logger.setLevel(logging.INFO)
 
     if options.increase_partition_power and options.ring:
+        get_confirmation()
         with open(options.ring) as src_ring_fd:
             src_ring = src_ring_fd.read()
             src_ring = pickle.loads(src_ring)
@@ -244,6 +254,7 @@ def main(args):
             pickle.dump(dst_ring, dst_ring_fd, protocol=2)
 
     elif options.decrease_partition_power and options.ring:
+        get_confirmation()
         with open(options.ring) as src_ring_fd:
             src_ring = src_ring_fd.read()
             src_ring = pickle.loads(src_ring)
@@ -256,7 +267,7 @@ def main(args):
     elif (options.move_object_files or
           options.move_container_dbs or
           options.move_account_dbs) and options.ring and options.path:
-
+        get_confirmation()
         fm = FileMover(options)
         fm.start()
 
